@@ -109,15 +109,14 @@ function startSession({ name, id }: { name: string, id: string }) {
     nuevaLinea.value = false
     qr.value = data.qr
   });
-  socket.on('session_update', () => {
-    loadActiveSessions();
-    loadHistory()
+  socket.on('auth',({session})=>{
     qr.value = ''
-  });
+    loadActiveSessions()
+    loadHistory()
+  })
   socket.on('disconnected', (data) => {
     if(qr.value){
       qr.value= ''
-      console.log(data)
     }
   });
 
@@ -200,6 +199,11 @@ const handleDif = (e:object): void  => {
     console.warn('⚠️ El socket no está listo aún');
   }
 }
+const handleactu = ()=>{
+  loadActiveSessions()
+  loadHistory()
+  id.value = ''
+}
 </script>
 
 <template>
@@ -215,7 +219,7 @@ const handleDif = (e:object): void  => {
     </div>
     <div v-if="id">
       <h3>Enviar mensaje desde {{ id.accountName }}</h3>
-      <layoutLinea :id='id' :socket='socket'/>
+      <layoutLinea v-if="id" :id='id' :socket='socket' @act="handleactu"/>
     </div>
     <Sessions v-if="accounts.length > 0" :accounts="accounts" :tittle="'Sessiones Historicas'" @NL="analize_NL" @id="analize_click" @Did="handleDelete" @Eid="handleEdit"/>
     <p v-else class="text"> No hay líneas Detectadas aun.</p>
@@ -263,7 +267,7 @@ span{
     gap: 12px;
     flex-wrap: wrap;
     white-space: nowrap;
-    margin: 2.5vw;
+    margin: 2.5vw 5vw;
     display: flex;
     flex-direction: row;
 }

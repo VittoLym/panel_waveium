@@ -1,24 +1,72 @@
 <script setup lang="ts">
     const {id, socket} = defineProps<{ id: object, socket: WebSocket }>()
-    import { ref } from 'vue'
+    const emit = defineEmits<{(act:string): void}>()
+    import { ref, onMounted } from 'vue'
+    
+    onMounted(()=>{
+        if (socket && socket.connected) {
+            socket.emit('chats',{userId: id.sessionId,},(response) => {
+                if (response.error) {
+                    console.error('hubo un error',response.error)
+                } else {
+                    chats_length.value = response.length
+                }
+            })
+            socket.emit('contacts',{userId: id.sessionId,},(response) => {
+                if (response.error) {
+                    console.error('hubo un error',response.error)
+                } else {
+                    contacts_length.value = response.length
+                }
+            })
+        }
+    })
     const mensaje = ref<string>('');
-
-    function agregarLinea() {
-    console.log('Agregar nueva línea')
-    }
+    const chats = ref<object>(null);
+    const chats_length = ref<number>(0);
+    const contacts = ref<object>(null);
+    const contacts_length = ref<number>(0);
 
     function verChats() {
-    console.log('Ver chats')
+        if(chats.value !== null){
+            chats.value = null
+            return
+        }
+        if (socket && socket.connected) {
+            socket.emit('chats',{userId: id.sessionId,},(response) => {
+                if (response.error) {
+                    console.error('hubo un error',response.error)
+                } else {
+                    console.log(response)
+                    chats.value = response
+                    chats_length.value = response.length
+                }
+  })
+        } else {
+            console.warn('⚠️ El socket no está listo aún');
+        }
     }
 
     function verContactos() {
-    console.log('Ver contactos')
+        if(contacts.value !== null){
+            contacts.value = null
+            return
+        }
+        if (socket && socket.connected) {
+            socket.emit('contacts',{userId: id.sessionId,},(response) => {
+                if (response.error) {
+                    console.error('hubo un error',response.error)
+                } else {
+                    contacts.value = response
+                    contacts_length.value = response.length
+                    console.log(contacts.value)
+                }
+            })
+        } else {
+            console.warn('⚠️ El socket no está listo aún');
+        }
     }
 
-    function subirHistoria() {
-    console.log('Subir historia')
-    }
-    
     // Enviar mensaje por WebSocket
     const enviarMensaje = () => {
         if (!id || !mensaje.value.trim()) return;
@@ -35,33 +83,55 @@
 
         mensaje.value = ''; // limpia el input
     };
+
     function desloguear() {
-    console.log('Cerrar sesión')
+        if (socket && socket.connected) {
+            socket.emit('logout',{user: id,},(response) => {
+                if (response.error) {
+                    console.error('hubo un error',response.error)
+                } else {
+                    console.log(response)
+                    emit('act','acti')
+                }
+            })
+        } else {
+            console.warn('⚠️ El socket no está listo aún');
+        }
     }
+
+    const getStatus = (lastMessage: object) => {
+        if (!lastMessage) return ''; // Si no hay mensaje, no muestra estado
+        return lastMessage.ack === 3 ? '✓ visto' : '✗ no visto';
+    };
 </script>
 <template>
     <section class="options">
-        <!-- Agregar línea -->
-        <button @click="agregarLinea">➕</button>
-
-        <!-- Ver chats -->
         <button @click="verChats">💬 Chats</button>
-
-        <!-- Ver contactos -->
         <button @click="verContactos">👥 Contactos</button>
-
-        <!-- Subir historia -->
-        <button @click="subirHistoria">📷 Historia</button>
-
-        <!-- Input mensaje -->
-        <div class="input-container">
-        </div>
-        <!-- Desloguear -->
         <button @click="desloguear">🚪 Salir</button>
         <aside>
             <input type="text" v-model="mensaje" placeholder="Escribí un mensaje..." key.up="enviarMensaje" />
             <button @click="enviarMensaje">📤 Enviar</button>
         </aside>
+        <div class="chats-container" v-if="chats !==null">
+            <article v-for="c in chats">
+                <p><strong>{{ c.name }}:</strong></p>
+                <p>{{ c?.lastMessage?.body }}</p>
+                <p>({{ getStatus(c.lastMessage) }})</p>
+            </article>
+        </div>
+        <div class="chats-container" v-if="contacts !==null">
+            <article v-for="c in contacts">
+                <p><strong>{{ c.number }} - {{ c.pushname || c.name || 'No name'}} :</strong></p>
+                <p>Es empresa: {{ c.isBusiness }}</p>
+            </article>
+        </div>
+        <div class="chats_length">
+            <p>Chats: <span>{{ chats_length }}</span></p>
+        </div>
+        <div class="chats_length">
+            <p>Contacts: <span>{{ contacts_length }}</span></p>
+        </div>
     </section>
 
 </template>
@@ -74,14 +144,48 @@
     border-radius: 10px;
     width: 90vw;
     flex-wrap: wrap;
-    height: 30vh;
+    height: min-content;
     justify-content: center;
     align-items: center;
+    padding: 5vh 0;
 }
 aside{
     display:flex;
     justify-content: space-between;
     width: 70vw;
+    margin: 2vh 6vw;
+}
+.chats-container{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    align-items: center;
+    min-height: min-content;
+}
+.chats_length{
+    background-color: #1e1e2f;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+    width: fit-content;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    font-family: sans-serif;
+    margin: 0 2vw;
+}
+.chats_length span {
+  color: #4ade80; /* verde */
+  font-weight: bold;
+}
+article{
+    width: 40%;
+    display: flex;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.429);
+    border-radius: 10px;
+    margin: 2vh 0;
+    padding: 0 2vw;
+}
+article p{
+    padding: 10px 15px;
 }
 
 input[type="text"] {

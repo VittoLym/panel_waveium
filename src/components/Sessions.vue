@@ -1,5 +1,6 @@
 <script setup lang="ts">
     import { defineEmits } from 'vue';
+    import circle from '../assets/circle.svg'
     const emit = defineEmits<{(id: string,NL:string, Did:string,Eid:string,initD:string): void}>()
     const {accounts,tittle} = defineProps<{accounts: any, tittle:string}>()
     const formatDate = (iso) => {
@@ -29,11 +30,14 @@
         <button class="Difu-button" @click="handleDif" v-if="tittle === 'Sessiones Activas'" title="Empezar difusion">👌</button>
         <div class="session-flex">
             <div v-for="account in accounts" :key="account._id" class="session-card">
-                <button class="delete-button" @click="handleDelete(account._id)">
+                <button class="delete-button" title="Eliminar Cuenta" @click="handleDelete(account._id)">
                 🗑️
                 </button>
-                <button v-if="account.status === 'active'" class="edit-button" @click="handleEdit(account._id)">
+                <button v-if="account.status === 'active'" title="Editar Cuenta" class="edit-button" @click="handleEdit(account._id)">
                 ✏️
+                </button>
+                <button v-if="account.status !== 'active'" title="Reconectar Cuenta" class="reconect-button" @click="handleEdit(account._id)">
+                <img :src="circle" alt="Reconectar Cuenta">
                 </button>
             <div class="session-content" @click="handleClick(account._id)">
                 <h3>{{ account.accountName }}<br/> ({{ account.sessionId }})</h3>
@@ -59,11 +63,13 @@
     gap: 12px;
     flex-wrap: wrap;
     white-space: nowrap;
-    margin: 2.5vw;
+    margin: 2.5vw 5vw;
     display: flex;
     flex-direction: row;
 }
-
+img{
+    width:1vw;
+}
 h2 {
     font-size: 24px;
     width: 80%;
@@ -195,6 +201,32 @@ button:hover {
 }
 
 .edit-button:active {
+    transform: scale(0.98);
+}
+.reconect-button{
+    position: absolute;
+    right: 3vw;
+    background-color: #ff44440d;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: min-content;
+    margin-top: 0;
+}
+
+.reconect-button:hover {
+    background-color: #9c00cc62;
+    transform: scale(1.05);
+}
+.reconect-button:active {
     transform: scale(0.98);
 }
 /* Asegurar que el botón de eliminar no afecte el hover de la card */

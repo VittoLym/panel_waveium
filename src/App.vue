@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeMount, onMounted, ref } from 'vue';
+import { onBeforeMount, onMounted, ref,onBeforeUnmount } from 'vue';
 import { io } from 'socket.io-client';
 import layoutLinea from './components/Layout.linea.vue';
 import Sessions from './components/Sessions.vue';
@@ -14,18 +14,18 @@ const activeAccounts = ref<any[]>([]);
 const nuevaLinea = ref<boolean>(false)
 const qr = ref<string>('')
 const currentSession = ref<string>('')
-let socket: WebSocket; 
+const socket = ref<Socket | null>(null);
 const host = "http://192.168.1.103:5000"
 let id = ref<string>(''); // ahora reactivo para re-renderizar
 
 onBeforeMount(() => {
-  socket = io(`http://${location.hostname}:5000`, {
+  socket.value = io(`http://${location.hostname}:5000`, {
     query: {
       userId: 'frontend-panel'
     },
     transports: ['websocket'] // Fuerza usar WebSocket
   });
-  socket.on('connect',async() => {
+  socket.value.on('connect',async() => {
     console.log('🟢 WebSocket conectado desde el frontend');
     const info = await loadActiveSessions()
     client.value = info
@@ -40,7 +40,7 @@ onBeforeMount(() => {
       numeros.value = [...numeros.value, ...nuevosNumeros];
     }
   });
-  socket.on('clients', (data) => {
+  socket.value.on('clients', (data) => {
     const info = loadActiveSessions()
     console.log(info)
     const nuevosNumeros = data.clients
@@ -56,7 +56,7 @@ onBeforeMount(() => {
     }
     client.value = data.clients;
   });
-  socket.on('disconnect', () => {
+  socket.value.on('disconnect', () => {
     console.log('🔴 Desconectado de Socket.io');
   });
   accounts.value = loadHistory()
@@ -97,7 +97,7 @@ function startSession({ name, id }: { name: string, id: string }) {
     console.warn('Ambos campos son obligatorios');
     return;
   }
-  socket.emit('start_session', { sessionId, accountName }, (response) => {
+  socket.value.emit('start_session', { sessionId, accountName }, (response) => {
     if (response.error) {
       console.error('hubo un error',response.error)
     } else {
@@ -105,16 +105,16 @@ function startSession({ name, id }: { name: string, id: string }) {
       qr.value = ''
     }
   });
-  socket.on('qr', (data) => {
+  socket.value.on('qr', (data) => {
     nuevaLinea.value = false
     qr.value = data.qr
   });
-  socket.on('auth',({session})=>{
+  socket.value.on('auth',({session})=>{
     qr.value = ''
     loadActiveSessions()
     loadHistory()
   })
-  socket.on('disconnected', (data) => {
+  socket.value.on('disconnected', (data) => {
     if(qr.value){
       qr.value= ''
     }
@@ -189,27 +189,44 @@ const analize_click = (id_number:string): void  => {
       console.log('📤 Seleccionado:', id.value);
     }
 }
-const handleDif = (e:object): void  => {
-  if (socket && socket.connected) {
-    socket.emit('difu',{
-      accounts: e
-    })
-  }
-  else {
-    console.warn('⚠️ El socket no está listo aún');
-  }
-}
 const handleactu = ()=>{
   loadActiveSessions()
   loadHistory()
   id.value = ''
 }
+onMounted(()=>{
+  socket.value.on('difu_progress', (data) => {
+    switch(data.status) {
+        case 'start':
+            console.log(data.message);
+            break;
+            
+        case 'progress':
+            console.log(`${data.message} (${data.currentRound}/${data.totalRounds})`);
+            break;
+            
+        case 'cooldown':
+            console.log(`${data.message} - Tiempo restante: ${data.remainingMs / 60000} mins`);
+            break;
+            
+        case 'error':
+            console.error(`${data.message}: ${data.error}`);
+            break;
+      }
+  });
+})
+onBeforeUnmount(() => {
+  socket.value.off('qr'); // ¡Importante!
+  socket.value.off('auth');
+  socket.value.disconnect();
+});
+
 </script>
 
 <template>
   <div>
     <h1>Panel de Control</h1>
-    <Sessions v-if="activeAccounts.length > 0" :accounts="activeAccounts" :tittle="'Sessiones Activas'" @id="analize_click" @NL="analize_NL"@Did="handleDelete" @Eid="handleEdit" @initD="handleDif"/>
+    <Sessions v-if="activeAccounts.length > 0" :accounts="activeAccounts" :tittle="'Sessiones Activas'" :socket="socket" @id="analize_click" @NL="analize_NL"@Did="handleDelete" @Eid="handleEdit" />
     <div v-else class="main">
       <span></span>
       <article>
@@ -221,7 +238,7 @@ const handleactu = ()=>{
       <h3>Enviar mensaje desde {{ id.accountName }}</h3>
       <layoutLinea v-if="id" :id='id' :socket='socket' @act="handleactu"/>
     </div>
-    <Sessions v-if="accounts.length > 0" :accounts="accounts" :tittle="'Sessiones Historicas'" @NL="analize_NL" @id="analize_click" @Did="handleDelete" @Eid="handleEdit"/>
+    <Sessions v-if="accounts.length > 0" :accounts="accounts" :tittle="'Sessiones Historicas'" :socket="socket" @NL="analize_NL" @id="analize_click" @Did="handleDelete" @Eid="handleEdit"/>
     <p v-else class="text"> No hay líneas Detectadas aun.</p>
     <NuevaLinea v-if="nuevaLinea" @close="handleModle" @submit="startSession"/>
     <QRLinea v-if="qr" :qr="qr"/>

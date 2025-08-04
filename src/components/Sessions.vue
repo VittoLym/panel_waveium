@@ -1,12 +1,30 @@
 <script setup lang="ts">
-    import { defineEmits } from 'vue';
+    import { defineEmits,ref,onBeforeMount } from 'vue';
     import circle from '../assets/circle.svg'
     const emit = defineEmits<{(id: string,NL:string, Did:string,Eid:string,initD:string): void}>()
-    const {accounts,tittle} = defineProps<{accounts: any, tittle:string}>()
+    const {accounts,tittle,socket} = defineProps<{accounts: any, tittle:string, socket: WebSocket}>()
+    const difusionActiva = ref<boolean>(false)
+    onBeforeMount(async()=> {
+        async function checkDifusionStatus() {
+            return new Promise((resolve) => {
+                if (!socket.connected) {
+                    resolve({ isRunning: false, stopRecursion: true });
+                    return;
+                }
+                socket.emit('get_difusion_status', (response) => {
+                    resolve(response);
+                });
+            });
+        }
+        const status = await checkDifusionStatus();
+        difusionActiva.value = status.isRunning
+        console.log('Estado actual:', status.isRunning ? 'ACTIVO' : 'INACTIVO');
+    })
     const formatDate = (iso) => {
         const date = new Date(iso)
         return date.toLocaleString()
     }
+    
     const handleClick = (id: string): void =>{
         emit('id',id)
     }
@@ -20,14 +38,30 @@
       emit('Eid',id)
     }
     const handleDif = (): void =>{
-        emit('initD',accounts)
+        if (difusionActiva.value && socket && socket.connected) {
+            socket.emit('heating',{accounts},(response) => {
+                if (response.success) {
+                    console.log('Éxito:', response.message);
+                    console.log('Datos:', response.data);
+                } else {
+                    console.error('Error:', response.error);
+                }
+            })
+        } else {
+            console.log('⏸️ Deteniendo Calentamiento...');
+            socket.emit('control_difu', { action: 'stop' });
+            difusionActiva.value = false; 
+        }
     }
 </script>
 <template>
     <div class="main">
         <h2>{{ tittle }}</h2>
+        <label class="switch" title="Empezar difusión" v-if="tittle === 'Sessiones Activas'">
+            <input type="checkbox" v-model="difusionActiva" @change="handleDif">
+            <span class="slider"></span>
+        </label>
         <button class="add-button" @click="handleAdd" v-if="tittle === 'Sessiones Activas'" title="Agregar nueva linea">＋</button>
-        <button class="Difu-button" @click="handleDif" v-if="tittle === 'Sessiones Activas'" title="Empezar difusion">👌</button>
         <div class="session-flex">
             <div v-for="account in accounts" :key="account._id" class="session-card">
                 <button class="delete-button" title="Eliminar Cuenta" @click="handleDelete(account._id)">
@@ -53,6 +87,48 @@
 
 </template>
 <style scoped>
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 5%;
+  height: 50px;
+  margin: 2vh 1vw;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 50px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 40px;
+  width: 40px;
+  left: 5px;
+  bottom: 5px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #4caf50;
+}
+
+input:checked + .slider:before {
+  transform: translateX(calc(80%)); /* Ajuste dinámico */
+}
 .main {
     width: 90vw;
     background-color: #fefefe18;

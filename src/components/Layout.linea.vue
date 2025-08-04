@@ -2,8 +2,15 @@
     const {id, socket} = defineProps<{ id: object, socket: WebSocket }>()
     const emit = defineEmits<{(act:string): void}>()
     import { ref, onMounted } from 'vue'
-    
+    const mensaje = ref<string>('');
+    const chats = ref<object>(null);
+    const chats_length = ref<number>(0);
+    const contacts = ref<object>(null);
+    const contacts_length = ref<number>(0);
     onMounted(()=>{
+        const controlDifusion = (action: string) => {
+            socket.emit('control_difu', { action });
+        };
         if (socket && socket.connected) {
             socket.emit('chats',{userId: id.sessionId,},(response) => {
                 if (response.error) {
@@ -21,11 +28,6 @@
             })
         }
     })
-    const mensaje = ref<string>('');
-    const chats = ref<object>(null);
-    const chats_length = ref<number>(0);
-    const contacts = ref<object>(null);
-    const contacts_length = ref<number>(0);
 
     function verChats() {
         if(chats.value !== null){
@@ -67,7 +69,6 @@
         }
     }
 
-    // Enviar mensaje por WebSocket
     const enviarMensaje = () => {
         if (!id || !mensaje.value.trim()) return;
 

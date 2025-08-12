@@ -1,7 +1,12 @@
 <script setup lang="ts">
-const {qr} = defineProps<{qr:string}>()
-const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qr)}`
+import { watch, ref } from 'vue'
 
+const { qr } = defineProps<{ qr: string }>()
+const qrUrl = ref(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qr)}`)
+
+watch(() => qr, (newQr) => {
+  qrUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(newQr)}`
+})
 </script>
 <template>
 <  <div class="qr-overlay">

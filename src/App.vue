@@ -25,6 +25,7 @@ onBeforeMount(() => {
     },
     transports: ['websocket'] // Fuerza usar WebSocket
   });
+  loadActiveSessions()
   socket.value.on('connect',async() => {
     console.log('🟢 WebSocket conectado desde el frontend');
     const info = await loadActiveSessions()
@@ -41,8 +42,7 @@ onBeforeMount(() => {
     }
   });
   socket.value.on('clients', (data) => {
-    const info = loadActiveSessions()
-    console.log(info)
+    loadActiveSessions()
     const nuevosNumeros = data.clients
       .map(client => client.numero)
       .filter(numero => 

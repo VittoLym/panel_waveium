@@ -75,10 +75,12 @@
                 </button>
             <div class="session-content" @click="handleClick(account._id)">
                 <h3>{{ account.accountName }}<br/> ({{ account.sessionId }})</h3>
-                <p><strong>📱 Número:</strong> {{ account.phoneNumber }}</p>
+                <p><strong>📞 Número:</strong> {{ account.phoneNumber }}</p>
                 <p><strong>🟢 Estado:</strong> {{ account.status }}</p>
                 <p><strong>📅 Creado:</strong> {{ formatDate(account.createdAt) }}</p>
-                <p><strong>🔄 Última conexión:</strong> {{ formatDate(account.lastConnection) }}</p>
+                <p><strong>⏱️ Última conexión:</strong> {{ formatDate(account.lastConnection) }}</p>
+                <p><Strong>🏅 Score:</Strong> {{ account.score }}</p>
+                <p><Strong>✉️ Mesajes enviado:</Strong> {{ account.messagesSent }}</p>
                 <p class="id"><strong>ID:</strong> {{ account._id }}</p>
             </div>
         </div>
@@ -195,12 +197,15 @@ button:hover {
     box-shadow: 2px 4px 8px rgba(0,0,0,0.05);
     transition: all 0.2s ease;
     width: min-content; /* Cambiado de min-content a un ancho fijo para mejor consistencia */
-    min-height: 220px;
+    min-height: 270px;
 }
 
 .session-content {
     cursor: pointer;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
 }
 
 .session-card:hover {

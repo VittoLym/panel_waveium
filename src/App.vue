@@ -15,7 +15,7 @@ const nuevaLinea = ref<boolean>(false)
 const qr = ref<string>('')
 const currentSession = ref<string>('')
 const socket = ref<Socket | null>(null);
-const host = "http://192.168.1.103:5000"
+const host = "http://192.168.1.104:5000"
 let id = ref<string>(''); // ahora reactivo para re-renderizar
 
 onBeforeMount(() => {
